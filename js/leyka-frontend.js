@@ -4,6 +4,9 @@ var edd_scripts;
 jQuery(document).ready(function($){
     /** Gateways descriptions in the tooltips */
     $('#leyka_gateways_list').find('.question-icon').popover({delay: {show: 0, hide: 1000}});
+    $(document).ajaxSuccess(function(){
+        $('.question-icon').popover({delay: {show: 0, hide: 1000}}); // Some descriptions in the tooltips
+    });
     
     /** Symbols counter for user comments field */
     $('#leyka_form_resp, #edd_purchase_form_wrap').on('keyup focus', '#leyka-donor-comment', function(){
@@ -66,10 +69,10 @@ jQuery(document).ready(function($){
             if(item_val.search('_') != -1) {
                 item_val = item_val.split('_');
                 params.download_id = item_val[0];
-                params.price_id = item_val[1];
+                params.price_ids = [item_val[1]];
             } else {
                 params.download_id = item_val;
-                params.price_id = 'false';
+                params.price_ids = ['false'];
             }
             
             if($form.find('#leyka_quick_add_donate option:selected').hasClass('any-sum')) {
@@ -84,6 +87,8 @@ jQuery(document).ready(function($){
                     params.sum = free_sum_val;
                 }
             }
+
+            $form.find(':submit').attr('disabled', 'disabled');
             $.post(edd_scripts.ajaxurl, params, function(resp){
                 window.location.href = edd_scripts.checkout_page;
             });
@@ -136,4 +141,17 @@ jQuery(document).ready(function($){
     $('body').on('click.eddAddToCart', '.edd-add-to-cart', function(e){
         $(this).parents('form').find('.edd-simply-donate').hide();
     });
+    $('#leyka_gateways_list input, #leyka_gateways_list label').click(function(){
+        $('.gateways_list_entry.active').removeClass('active');
+        $(this).parents('.gateways_list_entry').addClass('active');
+        if($('#leyka-single-form').hasClass('complete')) return true;
+        $('#leyka-single-form').addClass('complete');
+    })
+    $('#edd_agree_to_terms').live("change",function(){
+        if(this.checked) {
+            $('#leyka_form_resp').addClass('complete');
+        } else {
+            $('#leyka_form_resp').removeClass('complete');
+        }
+    })
 });

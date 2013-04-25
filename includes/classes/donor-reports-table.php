@@ -8,8 +8,7 @@
  * @since 1.0
  */
 
-// Exit if accessed directly
-if( !defined('ABSPATH') ) exit;
+if( !defined('ABSPATH') ) exit; // Exit if accessed directly
 
 // Load WP_List_Table if not loaded
 if( !class_exists('WP_List_Table') )
