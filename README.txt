@@ -5,7 +5,7 @@ Plugin URI: http://leyka.te-st.ru
 Tags: e-donate, donates, charity, wp-donates, crowdfunding, leyka
 Requires at least: 3.6.1
 Tested up to: 3.8.1
-Stable tag: 2.0
+Stable tag: 2.0.1
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -64,6 +64,11 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 == Changelog ==
 
+= 2.0.1 =
+* New: Added pot file for translation
+* Fix: Bugfixes in core and gateways
+* Tweak: UI improvements in templates of donation form
+
 = 2.0 =
 * New: **Backward compatibility: none.**
 * New: New major release. Code refactored and data structures changed.
@@ -109,6 +114,6 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 **ВНИМАНИЕ!**
 
 В версии 2.0 были внесены критические изменения, не совместимые с кодом и данными любой более ранней версии. 
-**Если вы активно использовали Лейку версии 1.2 или ранее, не выполняйте это обновление**. 
+**Если вы активно использовали Лейку версии 1.2.x или ранее, не выполняйте это обновление**. 
 Разработчики плагина не несут ответственности за результат этого действия. 
 Подробнее читайте на [сайте плагина](http://leyka.te-st.ru/old-version/)
