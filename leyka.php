@@ -1,18 +1,19 @@
 <?php
-/*
-Plugin Name: Leyka
-Plugin URI: http://leyka.te-st.ru/
-Description: This plugin creates a donations management system on your WP site. This plugin is based on Easy Digital Downloads plugin (by Pippin Williamson).
-Version: 1.2.1
-Author: Lev Zvyagincev aka Ahaenor
-Author URI: ahaenor@gmail.com
-Contributors: 
-	Denis Kulandin aka VaultDweller <kulandin_ET_SIGN_te-st.ru>
-	Anna Ladoshkina <webdev_ET_SIGN_foralien.com>
-Text Domain: leyka
-Domain Path: languages
-License: GPLv2 or later
-
+/**
+ * Plugin Name: Leyka
+ * Plugin URI:  http://leyka.te-st.ru/
+ * Description: The donations management system for your WP site.
+ * Version:     2.1
+ * Author:      Lev Zvyagincev aka Ahaenor
+ * Author URI:  ahaenor@gmail.com
+ * Text Domain: leyka
+ * License URI: http://www.gnu.org/licenses/gpl-2.0.txt
+ * Domain Path: /lang
+ * Contributors:	
+	Anna Ladoshkina aka foralien (webdev@foralien.com)
+	Denis Cherniatev (denis.cherniatev@gmail.com)	
+	
+ * License: GPLv2 or later
 	Copyright (C) 2012-2013 by Teplitsa of Social Technologies (http://te-st.ru).
 
 	GNU General Public License, Free Software Foundation <http://www.gnu.org/licenses/gpl-2.0.html>
@@ -30,106 +31,66 @@ License: GPLv2 or later
 	You should have received a copy of the GNU General Public License
 	along with this program; if not, write to the Free Software
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
-*/
+ */
 
-if( !defined('ABSPATH') ) exit; // Exit if accessed directly
+// If this file is called directly, abort.
+if ( ! defined( 'WPINC' ) ) {
+	die;
+}
 
-// Leyka plugin version
-if( !defined('LEYKA_VERSION') ) {
-    define('LEYKA_VERSION', '1.2.1');
-}
-// Latest EDD version supported by Leyka
-if( !defined('LATEST_SUPPORTED_EDD_VERSION') ) {
-    define('LATEST_SUPPORTED_EDD_VERSION', '1.7.2');
-}
-// Plugin URL
-if( !defined('LEYKA_PLUGIN_BASE_URL') ) {
+// Leyka plugin version:
+if( !defined('LEYKA_VERSION') )
+    define('LEYKA_VERSION', '2.0');
+
+// Plugin base file:
+if( !defined('LEYKA_PLUGIN_BASE_FILE') ) // "leyka.php"
+    define('LEYKA_PLUGIN_BASE_FILE', basename(__FILE__));
+
+// Plugin base directory:
+if( !defined('LEYKA_PLUGIN_DIR_NAME') ) // Most commonly, "leyka"
+    define('LEYKA_PLUGIN_DIR_NAME', basename(dirname(__FILE__)));
+
+// Plugin URL:
+if( !defined('LEYKA_PLUGIN_BASE_URL') )
     define('LEYKA_PLUGIN_BASE_URL', plugin_dir_url(__FILE__));
-}
-// Plugin DIR
-if( !defined('LEYKA_PLUGIN_DIR') ) {
+
+// Plugin DIR, with trailing slash:
+if( !defined('LEYKA_PLUGIN_DIR') )
     define('LEYKA_PLUGIN_DIR', plugin_dir_path(__FILE__));
-}
-// Plugin inner name: full dir path + plugin main script filename.
-if( !defined('LEYKA_PLUGIN_INNER_NAME') ) {
-    define('LEYKA_PLUGIN_INNER_NAME', LEYKA_PLUGIN_DIR.basename(__FILE__));
-}
-// Plugin inner shortname: plugin dirname + plugin main script filename.
-if( !defined('LEYKA_PLUGIN_INNER_SHORT_NAME') ) {
+
+// Plugin ID:
+if( !defined('LEYKA_PLUGIN_INNER_SHORT_NAME') )
     define('LEYKA_PLUGIN_INNER_SHORT_NAME', plugin_basename(__FILE__));
+
+/** Load files: */
+
+// Load plugin text domain:
+load_plugin_textdomain('leyka', FALSE, plugin_basename(LEYKA_PLUGIN_DIR).'/lang/');
+
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-core.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-class-options-controller.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-functions.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-gateways-api.php');
+
+/** Automatically include all sub-dirs of /leyka/gateways/ */
+$gateways_dir = dir(LEYKA_PLUGIN_DIR.'gateways/');
+if( !$gateways_dir ) {
+    // ?..
 }
+else {
+    while(false !== ($gateway_id = $gateways_dir->read())) {
 
-if( !empty($edd_options['test_mode']) ) {
-    @error_reporting(E_ALL & ~E_STRICT);
-    @ini_set('display_errors', 'stdout');
-}
-
-require LEYKA_PLUGIN_DIR.'/includes/locale.php';
-
-if( !defined('EDD_VERSION') ) { // EDD is missing or inactive, show error and fall back
-    if( !function_exists('deactivate_plugins') )
-        require_once(ABSPATH.'wp-admin/includes/plugin.php');
-
-    // EDD is not there:
-    if( !file_exists(WP_PLUGIN_DIR.'/easy-digital-downloads/easy-digital-downloads.php') ) { 
-
-        function leyka_edd_not_found(){
-            if(current_user_can('install_plugins')) {
-                echo sprintf(
-                    __('<div id="message" class="error"><p><strong>Error:</strong> Easy Digital Downloads plugin is missing. It is required for donates module to work. Base donations plugin will be deactivated.</p><p><a href="%s">Click here</a> to download and install Easy Digital Downloads plugin.</p></div>', 'leyka'),
-                    wp_nonce_url(self_admin_url(
-                        'update.php?action=install-plugin&plugin=easy-digital-downloads'),
-                        'install-plugin_easy-digital-downloads'
-                    )
-                );
-            } else {
-                echo __('<div id="message" class="error"><p><strong>Error:</strong> Easy Digital Downloads plugin is missing. It is required for donates module to work. Base donations plugin will be deactivated.</p></div>', 'leyka');
-            }
-
-        }
-        add_action('admin_notices', 'leyka_edd_not_found');
-
-    } else if( !is_plugin_active('easy-digital-downloads/easy-digital-downloads.php') ) { // EDD is inactive
-
-        function leyka_edd_inactive(){
-            echo sprintf(
-                __('<div id="message" class="error"><p><strong>Error:</strong> Easy Digital Downloads plugin is installed but inactive. It is required for donates module to work. Base donations plugin will be deactivated.</p><p><a href="%s">Click here</a> to activate Easy Digital Downloads plugin.</p></div>', 'leyka'),
-                wp_nonce_url(
-                    'plugins.php?action=activate&amp;plugin=easy-digital-downloads/easy-digital-downloads.php&amp;',
-                    'activate-plugin_easy-digital-downloads/easy-digital-downloads.php'
-                )
-            );
-        }
-        add_action('admin_notices', 'leyka_edd_inactive');
+        if($gateway_id != '.' && $gateway_id != '..')
+			require_once(LEYKA_PLUGIN_DIR."gateways/$gateway_id/leyka-class-$gateway_id-gateway.php");
     }
-
-    deactivate_plugins(LEYKA_PLUGIN_INNER_NAME); // Deactivate Leyka in both cases 
-} else { // EDD is active, load Leyka normally
-    // Plugin official name
-    if( !defined('LEYKA_PLUGIN_TITLE') ) {
-        define('LEYKA_PLUGIN_TITLE', __('Leyka', 'leyka'));
-    }
-
-    require LEYKA_PLUGIN_DIR.'/includes/install.php';
-    require LEYKA_PLUGIN_DIR.'/includes/post-types.php';
-    require LEYKA_PLUGIN_DIR.'/includes/functions.php';
-    require LEYKA_PLUGIN_DIR.'/includes/template-tags.php';
-    require LEYKA_PLUGIN_DIR.'/includes/shortcodes.php';
-    //require LEYKA_PLUGIN_DIR.'/includes/widgets.php';
-    require LEYKA_PLUGIN_DIR.'/includes/frontend.php';
-    require LEYKA_PLUGIN_DIR.'/includes/frontend-single-donations.php';
-    require LEYKA_PLUGIN_DIR.'/includes/ajax.php';
-    
-    require LEYKA_PLUGIN_DIR.'/includes/admin-global.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-plugins-list-page.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-donations-history-page.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-recalls-page.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-reports-page.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-donates-list-page.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-edit-donate-page.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-settings-sections/emails.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-settings-sections/gateways.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-settings-sections/general.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-settings-sections/misc.php';
-    require LEYKA_PLUGIN_DIR.'/includes/admin-settings-sections/taxes.php';
+    $gateways_dir->close();
 }
+
+// Activation/Deactivation:
+register_activation_hook(__FILE__, array('Leyka', 'activate'));
+register_deactivation_hook(__FILE__, array('Leyka', 'deactivate'));
+
+// Init:
+leyka();
+
+//echo '<pre>'.print_r(leyka_get_pm_list(), TRUE).'</pre>';
