@@ -1,4 +1,5 @@
-<?php
+<?php if( !defined('WPINC') ) die;
+
 class Leyka_Options_Controller {
 
     private static $_instance = null;
@@ -14,20 +15,23 @@ class Leyka_Options_Controller {
 
     private function __construct() {
 
-        require_once(LEYKA_PLUGIN_DIR.'inc/leyka-options-meta.php');
         global $options_meta;
 
         foreach($options_meta as $name => &$data) {
 
-            $data['value'] = get_option("leyka_$name");       
-                
+            $data['value'] = get_option("leyka_$name");
+
             if($data['value'] === false) // Option is not set, use default value from meta
                 $data['value'] = $data['default'];
 
             $this->_options[str_replace('leyka_', '', $name)] = $data;
-            
-        }
 
+        }
+    }
+
+    public function get_options_names() {
+
+        return array_keys($this->_options);
     }
 
     /** 
@@ -38,15 +42,15 @@ class Leyka_Options_Controller {
         $option_name = str_replace('leyka_', '', $option_name);
         if(empty($this->_options[$option_name]))
             return null;
-       
+
         $value = $this->_options[$option_name]['value'];      
         
-        if($this->_options[$option_name]['type'] == 'html' || $this->_options[$option_name]['type'] == 'rich_html'){
-            $value = html_entity_decode(stripslashes($value));
+        if($this->_options[$option_name]['type'] == 'html' || $this->_options[$option_name]['type'] == 'rich_html') {
+            $value = is_array($value) && isset($value['value']) ?
+                html_entity_decode(stripslashes($value['value'])) : html_entity_decode(stripslashes((string)$value));
         }
- 
 
-        return $value;
+        return apply_filters('leyka_option_value', $value, $option_name);
     }
 
     /**
@@ -89,12 +93,7 @@ class Leyka_Options_Controller {
             $params['value'] = $value_saved;
         else if(empty($params['value']) && !empty($params['default']))
             $params['value'] = $params['default'];
-        
-        //hack for some strangely incorrect after-update behavior
-        if(is_array($params['value']) && isset($params['value']['value']) && !empty($params['value']['value']))
-            $params['value'] = $params['value']['value'];
-        
-        
+
         $params = array_merge(array(
             'type' => $type, // html, rich_html, select, radio, checkbox, multi_checkbox  
             'value' => '',
@@ -128,10 +127,7 @@ class Leyka_Options_Controller {
     }
 
     public function option_exists($name) {
-        $name = str_replace('leyka_', '', $name);
-
-        //return !empty($this->_options[$name]); this cause problem for checkboxes = 0
-        return isset($this->_options[$name]);
+        return isset($this->_options[str_replace('leyka_', '', $name)]);
     }
 
     /** 
@@ -160,8 +156,10 @@ class Leyka_Options_Controller {
             $this->get_value($option_name) : $this->set_value($option_name, $new_value);
     }
 
-    public function opt_safe($option_name) { 
-        return $this->get_value($option_name) ? $this->get_value($option_name) : $this->get_default_of($option_name);
+    public function opt_safe($option_name) {
+        $value = $this->get_value($option_name);
+
+        return $value ? $value : $this->get_default_of($option_name);
     }
 
     protected function _validate_option($option_name, $value) {
@@ -189,11 +187,7 @@ class Leyka_Options_Controller {
         $option_name = str_replace('leyka_', '', $option_name);
 
         return empty($this->_options[$option_name]) ? false : $this->_options[$option_name]['type'];
-    } 
-
-//    public function set_default_of($option_name, $new_value) {
-//        return true;
-//    }
+    }
 
     public function is_required($option_name) {
         $option_name = str_replace('leyka_', '', $option_name);

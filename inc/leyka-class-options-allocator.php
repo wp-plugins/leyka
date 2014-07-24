@@ -1,4 +1,5 @@
-<?php
+<?php if( !defined('WPINC') ) die;
+
 class Leyka_Options_Allocator {
     private static $_instance = null;
     protected $_tabs = array();
@@ -145,8 +146,7 @@ class Leyka_Options_Allocator {
                         'title' => __('Miscellaneous', 'leyka'),
                         'is_default_collapsed' => true,
                         'options' => array(
-                            /*'test_mode_on',*/ 'success_page', 'failure_page', /*'default_donation_status', 
-                            'donate_submit_text',*/
+                            'success_page', 'failure_page',
                         )
                     ),),
                 );

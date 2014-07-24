@@ -34,13 +34,11 @@
  */
 
 // If this file is called directly, abort.
-if ( ! defined( 'WPINC' ) ) {
-	die;
-}
+if( !defined('WPINC') ) die;
 
 // Leyka plugin version:
 if( !defined('LEYKA_VERSION') )
-    define('LEYKA_VERSION', '2.0');
+    define('LEYKA_VERSION', '2.1.3');
 
 // Plugin base file:
 if( !defined('LEYKA_PLUGIN_BASE_FILE') ) // "leyka.php"
@@ -62,27 +60,42 @@ if( !defined('LEYKA_PLUGIN_DIR') )
 if( !defined('LEYKA_PLUGIN_INNER_SHORT_NAME') )
     define('LEYKA_PLUGIN_INNER_SHORT_NAME', plugin_basename(__FILE__));
 
-/** Load files: */
+// Environment checks. If some failed, deactivate the plugin to save WP from possible crushes:
+if( !defined('PHP_VERSION') || version_compare(PHP_VERSION, '5.3.0', '<') ) {
 
-// Load plugin text domain:
-load_plugin_textdomain('leyka', FALSE, plugin_basename(LEYKA_PLUGIN_DIR).'/lang/');
+    echo __('<div id="message" class="error"><p><strong>Error:</strong> your PHP version is <strong>below 5.3</strong>. It is required for Leyka to work. Plugin will be deactivated.<br />If you wish to solve this issue, please refer to your hosting provider to have him update PHP to at least <strong>v5.3</strong>. In addition, you may wish to change a hosting provider you are using.</p></div>', 'leyka');
 
-require_once(LEYKA_PLUGIN_DIR.'inc/leyka-core.php');
-require_once(LEYKA_PLUGIN_DIR.'inc/leyka-class-options-controller.php');
+    die();
+}
+
+/** To avoid some strange bug, when WP functions like is_user_logged_in() are suddenly not found: */
+if( !function_exists('is_user_logged_in') )
+    require_once(ABSPATH.'wp-includes/pluggable.php');
+
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-polylang.php');
 require_once(LEYKA_PLUGIN_DIR.'inc/leyka-functions.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-options-meta.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-class-options-controller.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-core.php');
 require_once(LEYKA_PLUGIN_DIR.'inc/leyka-gateways-api.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-class-campaign.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-class-donation.php');
+require_once(LEYKA_PLUGIN_DIR.'inc/leyka-class-payment-form.php');
 
 /** Automatically include all sub-dirs of /leyka/gateways/ */
 $gateways_dir = dir(LEYKA_PLUGIN_DIR.'gateways/');
 if( !$gateways_dir ) {
     // ?..
-}
-else {
+} else {
+
     while(false !== ($gateway_id = $gateways_dir->read())) {
 
-        if($gateway_id != '.' && $gateway_id != '..')
-			require_once(LEYKA_PLUGIN_DIR."gateways/$gateway_id/leyka-class-$gateway_id-gateway.php");
+        $file_addr = LEYKA_PLUGIN_DIR."gateways/$gateway_id/leyka-class-$gateway_id-gateway.php";
+
+        if($gateway_id != '.' && $gateway_id != '..' && file_exists($file_addr))
+			require_once($file_addr);
     }
+
     $gateways_dir->close();
 }
 
@@ -91,10 +104,6 @@ register_activation_hook(__FILE__, array('Leyka', 'activate'));
 register_deactivation_hook(__FILE__, array('Leyka', 'deactivate'));
 
 // Init:
-add_action('setup_theme', 'leyka_init', 2);
-function leyka_init(){
-	leyka();
-	do_action('leyka_init_actions');	
-}
-
-//echo '<pre>'.print_r(leyka_get_pm_list(), TRUE).'</pre>';
+//add_action('init', function(){
+leyka();
+//});
