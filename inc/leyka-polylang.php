@@ -8,7 +8,6 @@ if(defined('POLYLANG_VERSION') && function_exists('pll_register_string')) {
         if($slug != 'en') {
             load_textdomain('leyka', LEYKA_PLUGIN_DIR."lang/leyka-{$cur_lang->locale}.mo");
         }
-        echo '<pre>' . print_r('Lang loaded', 1) . '</pre>';
 
         add_filter('leyka_default_success_page_query', function($params){
 
