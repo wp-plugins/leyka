@@ -27,7 +27,7 @@ class Leyka {
 	 * Slug of the plugin screen.
 	 * @var string
 	 */
-    private $_plugin_screen_hook_suffix = null;
+    // private $_plugin_screen_hook_suffix = null;
 
     /**
      * Gateways list.
@@ -36,7 +36,7 @@ class Leyka {
     private $_gateways = array();
 
     /** @var bool Set in true if gateways addition already processed. */
-    private $_gateways_added = false;
+    // private $_gateways_added = false;
 
     /** @var array Of WP_Error instances. */
     private $_form_errors = array();
@@ -86,9 +86,10 @@ class Leyka {
         add_action('parse_request', function($request){
             // Callback URLs are: some-site.org/leyka/service/{gateway_id}/{action_name}/
             // For ex., leyka.ngo2.ru/leyka/service/yandex/check_order/
-            $request = $request->request;
+            $request = $_SERVER['REQUEST_URI']; //$request->request;
             if(stristr($request, 'leyka/service') !== FALSE) { // Leyka service URL
-                $request = explode('/', trim(str_replace('leyka/service', '', $request), '/'));
+                $request = explode('leyka/service', $_SERVER['REQUEST_URI']);
+                $request = explode('/', trim($request[1], '/'));
                 
                 // $request[0] - Payment method's ID, $request[1] - service action:
                 do_action('leyka_service_call-'.$request[0], $request[1]);
@@ -110,11 +111,7 @@ class Leyka {
             
         });
 
-//        add_action('parse_request', function($wp){
-//            echo '<pre>' . print_r($wp, 1) . '</pre>';
-//        });
-
-        add_action('template_redirect', array($this, 'gateway_redirect_page'));
+        add_action('template_redirect', array($this, 'gateway_redirect_page'), 1, 1);
 
 		$this->apply_formatting_filters(); // Internal formatting filters 
 		
@@ -236,6 +233,8 @@ class Leyka {
             if(get_option('leyka_options_installed'))
                 delete_option('leyka_options_installed');
 
+            require_once(LEYKA_PLUGIN_DIR.'inc/leyka-options-meta.php');
+
             global $options_meta;
 
             foreach($options_meta as $name => $meta) {
@@ -246,9 +245,8 @@ class Leyka {
             }
 
             // Mostly to initialize gateways' and PM's options before updating them
-            /** @todo Check if all would work out without this do_action() here. */
-            if( !did_action('leyka_init_actions') )
-                do_action('leyka_init_actions');
+//            if( !did_action('leyka_init_actions') )
+//                do_action('leyka_init_actions');
 
             /** Upgrade gateway and PM options structure in the DB */
             foreach(leyka_get_gateways() as $gateway) {
@@ -339,7 +337,7 @@ class Leyka {
 //            'email_regexp' => '',
 		));
 
-		wp_localize_script($this->_plugin_slug . '-plugin-script', 'leyka', $js_data);
+		wp_localize_script($this->_plugin_slug.'-plugin-script', 'leyka', $js_data);
 	}
 
 	/**
@@ -350,7 +348,9 @@ class Leyka {
 		require_once(LEYKA_PLUGIN_DIR.'inc/leyka-class-options-allocator.php');
 		require_once(LEYKA_PLUGIN_DIR.'inc/leyka-render-settings.php');
 		require_once(LEYKA_PLUGIN_DIR.'/inc/leyka-admin.php');
-		Leyka_Admin_Setup::get_instance();	
+		require_once(LEYKA_PLUGIN_DIR.'/inc/leyka-donations-export.php');
+
+		Leyka_Admin_Setup::get_instance();
 	}
 	
 	
@@ -553,7 +553,7 @@ class Leyka {
     public function leyka_donation_metaboxes() {
 		do_action('leyka_donation_metaboxes');
 	}
-	
+
 	/**
      * Payment form submissions
      * @var $query WP_Query
@@ -570,9 +570,11 @@ class Leyka {
                 exit();
             }
 
+            do_action('leyka_init_gateway_redirect_page');
+
 			$this->do_payment_form_submission();
 
-			if($this->payment_form_has_errors()) {
+			if($this->payment_form_has_errors() || !$this->_payment_url) {
 
                 $this->_add_session_errors(); // Error handling
                 wp_redirect(wp_get_referer());
@@ -588,10 +590,10 @@ class Leyka {
 
     public function do_payment_form_submission() {
 
-        $this->clear_session_errors(); // Clear all previous sumbits errors, if there are some
+        $this->clear_session_errors(); // Clear all previous submits errors, if there are some
 
         if( !wp_verify_nonce($_REQUEST['_wpnonce'], 'leyka_payment_form') ) {
-            
+
             $error = new WP_Error('wrong_form_submission', __('Wrong nonce in submitted form data', 'leyka'));
             $this->add_payment_form_error($error);
         }
@@ -609,19 +611,19 @@ class Leyka {
         $donation_id = $this->log_submission();
 
         /** @todo We may want to replace whole $_POST with some specially created array */
-        do_action('leyka_payment_form_submission', $pm[0], implode('-', array_slice($pm, 1)), $donation_id, $_POST);
+        do_action('leyka_payment_form_submission-'.$pm[0], $pm[0], implode('-', array_slice($pm, 1)), $donation_id, $_POST);
 
         $this->_payment_vars = apply_filters('leyka_submission_form_data-'.$pm[0], $this->_payment_vars, $pm[1], $donation_id);
 
         $this->_payment_url = apply_filters('leyka_submission_redirect_url-'.$pm[0], $this->_payment_url, $pm[1]);
 
-        if( !$this->_payment_url ) {
+//        if( !$this->_payment_url ) {
+//
+//            $error = new WP_Error('wrong_pm_url', __('Wrong payment method URL to submit the form data', 'leyka'));
+//            $this->add_payment_form_error($error);
+//        } /* else
+//            $this->clear_session_errors();*/
 
-            $error = new WP_Error('wrong_pm_url', __('Wrong payment method URL to submit the form data', 'leyka'));
-            $this->add_payment_form_error($error);
-        } /* else
-            $this->clear_session_errors();*/
-        
         if($this->payment_form_has_errors()) // No logging needed if submit attempt have failed
             wp_delete_post($donation_id, true);
 	}
@@ -633,44 +635,20 @@ class Leyka {
 
 		$campaign = get_post((int)$_POST['leyka_campaign_id']);
 		$purpose_text = get_post_meta($campaign->ID, 'payment_title', true);
-		$purpose_text = (empty($purpose_text) && $campaign->post_title) ? $campaign->post_title : $purpose_text;
-        $res = wp_insert_post(array(
-            'post_type' => 'leyka_donation',
-            'post_status' => 'submitted',
-            'post_title' => $purpose_text ?
-                $purpose_text : leyka_options()->opt('donation_purpose_text'),
-        ), true);
-        
-        if(is_wp_error($res)) {
+		$purpose_text = empty($purpose_text) && $campaign->post_title ? $campaign->post_title : $purpose_text;
+
+        $pm_data = leyka_pf_get_payment_method_value();
+        $donation_id = Leyka_Donation::add(apply_filters('leyka_new_donation_data', array(
+            'purpose_text' => $purpose_text,
+        )));
+
+        if(is_wp_error($donation_id))
             /** @todo Modify this method so it can take any WP_Error as a param, then call it here: */
-//            $this->_add_session_errors();
             return false;
-        } else {
+        else {
 
-            $pm_data = leyka_pf_get_payment_method_value();
-
-            update_post_meta($res, 'leyka_donation_amount', leyka_pf_get_amount_value());
-            update_post_meta($res, 'leyka_donation_currency', leyka_pf_get_currency_value());
-            update_post_meta($res, 'leyka_donor_name', leyka_pf_get_donor_name_value());
-            update_post_meta($res, 'leyka_donor_email', leyka_pf_get_donor_email_value());
-            update_post_meta($res, 'leyka_payment_method', $pm_data['payment_method_id']);
-            update_post_meta($res, 'leyka_gateway', $pm_data['gateway_id']);
-            update_post_meta($res, 'leyka_campaign_id', leyka_pf_get_campaign_id_value());
-            
-            if( !get_post_meta($res, '_leyka_donor_email_date', true) )
-                update_post_meta($res, '_leyka_donor_email_date', 0);
-            if( !get_post_meta($res, '_leyka_managers_emails_date', true) )
-                update_post_meta($res, '_leyka_managers_emails_date', 0);
-
-            update_post_meta(
-                $res,
-                '_status_log',
-                array(array('date' => time(), 'status' => 'submitted'))
-            );
-
-            do_action('leyka_log_donation', $res);
-
-            return $res;
+            do_action('leyka_log_donation-'.$pm_data['gateway_id'], $donation_id);
+            return $donation_id;
         }
 	}
 
@@ -687,16 +665,16 @@ class Leyka {
 
         do_action('leyka_logging_new_donation', $donation_id, $donation);
     }
-	
+
 	/**
 	 * Templates manipulations
 	 **/
 	public function get_templates() { 
 		if(empty($this->templates)) { 
 			$this->templates = glob(STYLESHEETPATH.'/leyka-template-*.php');
-			if($this->templates === false || empty($this->templates)) { // if glob hits an error, it returns false
+			if($this->templates === false || empty($this->templates)) { // If global hits an error, it returns false
+
 				// Let's search in own folder:
-				
 				$this->templates = glob(LEYKA_PLUGIN_DIR . 'templates/leyka-template-*.php');
 				
 				if($this->templates === false)
@@ -760,3 +738,5 @@ __('Radios', 'leyka');
 __('Radio options for each payment method', 'leyka');
 __('Toggles', 'leyka');
 __('Toggled options for each payment method', 'leyka');
+__('single', 'leyka');
+__('rebill', 'leyka');

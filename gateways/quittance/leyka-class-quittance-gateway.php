@@ -27,8 +27,8 @@ class Leyka_Quittance_Gateway extends Leyka_Gateway {
     
     public function process_form($gateway_id, $pm_id, $donation_id, $form_data) {
 
-        if($gateway_id != $this->_id || empty($this->_payment_methods[$pm_id]))
-            return;
+        // Localize a quittance first:
+        $res = load_textdomain('leyka', LEYKA_PLUGIN_DIR.'lang/leyka-'.get_locale().'.mo');
 
         header('HTTP/1.1 200 OK');
         header('Content-Type: text/html; charset=utf-8');
@@ -36,6 +36,9 @@ class Leyka_Quittance_Gateway extends Leyka_Gateway {
         $campaign = new Leyka_Campaign($form_data['leyka_campaign_id']);
         $quittance_html = str_replace(
             array(
+                '#BACK_TO_DONATION_FORM_TEXT#',
+                '#PRINT_THE_QUITTANCE_TEXT#',
+                '#QUITTANCE_RECEIVED_TEXT#',
                 '#SUCCESS_URL#',
                 '#PAYMENT_COMMENT#',
                 '#PAYER_NAME#',
@@ -49,6 +52,9 @@ class Leyka_Quittance_Gateway extends Leyka_Gateway {
                 '#CORR#',
             ),
             array( // Form field values
+                __('Return to the donation form', 'leyka'),
+                __('Print the quittance', 'leyka'),
+                __("OK, I've received the quittance", 'leyka'),
                 leyka_get_success_page_url(),
                 $campaign->payment_title,
                 $form_data['leyka_donor_name'],
@@ -155,9 +161,9 @@ class Leyka_Bank_Order extends Leyka_Payment_Method {
 
         $this->_custom_fields = empty($params['custom_fields']) ? array() : (array)$params['custom_fields'];
 
-        $this->_icons = apply_filters('leyka_payment_method_icons', array(
+        $this->_icons = apply_filters('leyka_icons_'.$this->_gateway_id.'_'.$this->_id, array(
             LEYKA_PLUGIN_BASE_URL.'gateways/quittance/icons/sber_s.png',
-        ), $this->_id);
+        ));
 
         $this->_submit_label = empty($params['submit_label']) ?
             __('Get bank order quittance', 'leyka') : $params['submit_label'];

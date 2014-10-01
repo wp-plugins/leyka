@@ -4,7 +4,7 @@
  **/
 
 /**
- * Functions to register and deregister GW
+ * Functions to register and deregister a gateway
  **/
 function leyka_add_gateway($class_name){
     leyka()->add_gateway($class_name);
@@ -32,7 +32,7 @@ function leyka_get_pm_list($activity = null, $currency = false) {
         $pm_list = array_merge($pm_list, $gateway->get_payment_methods($activity, $currency));
     }
 
-    return $pm_list;
+    return apply_filters('leyka_active_pm_list', $pm_list, $activity, $currency);
 }
 
 /**
@@ -94,12 +94,13 @@ abstract class Leyka_Gateway {
 
         $this->_set_gateway_attributes(); // Create main Gateway's attributes
 
-        $this->_set_options_defaults(); // Svaret an admin area's configurable options  
+        $this->_set_options_defaults(); // Set configurable options in admin area
 
         $this->_set_gateway_pm_list(); // Initialize or restore Gateway's PMs list and all their options
 
         // Set a Gateway class method to process a service calls from gateway:
         add_action('leyka_service_call-'.$this->_id, array($this, '_handle_service_calls'));
+        add_action('leyka_cancel_recurrents-'.$this->_id, array($this, 'cancel_recurrents'));
     }
 
     final protected function __clone() {}
@@ -111,8 +112,9 @@ abstract class Leyka_Gateway {
             static::$_instance = new static();
             static::$_instance->_initialize_options();
 
-            add_action('leyka_payment_form_submission', array(static::$_instance, 'process_form'), 10, 4);
-            add_action('leyka_log_donation', array(static::$_instance, 'log_gateway_fields'));
+            add_action('leyka_payment_form_submission-'.static::$_instance->id, array(static::$_instance, 'process_form'), 10, 4);
+            add_action('leyka_payment_form_submission-'.static::$_instance->id, array(static::$_instance, 'process_form_default'), 100, 4);
+            add_action('leyka_log_donation-'.static::$_instance->id, array(static::$_instance, 'log_gateway_fields'));
 
             add_filter('leyka_submission_redirect_url-'.static::$_instance->id, array(static::$_instance, 'submission_redirect_url'), 10, 2);
             add_filter('leyka_submission_form_data-'.static::$_instance->id, array(static::$_instance, 'submission_form_data'), 10, 3);
@@ -173,6 +175,10 @@ abstract class Leyka_Gateway {
     // Handler for Gateway's service calls (activate the donations, etc.):
     abstract public function _handle_service_calls($call_type = '');
 
+    // Handler for Gateway's procedure to stop some recurrent donations:
+    public function cancel_recurrents(Leyka_Donation $donation) {
+    }
+
     // Handler to use Gateway's responses in Leyka UI:
     abstract public function get_gateway_response_formatted(Leyka_Donation $donation);
 
@@ -184,6 +190,8 @@ abstract class Leyka_Gateway {
     protected function _set_gateway_pm_list() {
 
         $this->_initialize_pm_list();
+        do_action('leyka_init_pm_list', $this);
+
         $this->_initialize_pm_options();
         $this->_set_pm_activity();
     }
@@ -230,14 +238,85 @@ abstract class Leyka_Gateway {
     }
 
     abstract public function process_form($gateway_id, $pm_id, $donation_id, $form_data);
-    
+
     abstract public function submission_redirect_url($current_url, $pm_id);
 
     abstract public function submission_form_data($form_data_vars, $pm_id, $donation_id);
-    
+
     abstract public function log_gateway_fields($donation_id);
 
-//    abstract protected function _initialize_options();
+    static public function process_form_default($gateway_id, $pm_id, $donation_id, $form_data) {
+
+        if(empty($form_data['leyka_donation_amount']) || (float)$form_data['leyka_donation_amount'] <= 0) {
+            $error = new WP_Error('wrong_donation_amount', __('Donation amount must be specified to submit the form', 'leyka'));
+            leyka()->add_payment_form_error($error);
+        }
+
+        $currency = $form_data['leyka_donation_currency'];
+        if(empty($currency)) {
+            $error = new WP_Error('wrong_donation_currency', __('Wrong donation currency in submitted form data', 'leyka'));
+            leyka()->add_payment_form_error($error);
+        }
+
+        if(
+            !empty($form_data['top_'.$currency]) &&
+            $form_data['leyka_donation_amount'] > $form_data['top_'.$currency]
+        ) {
+            $top_amount_allowed = $form_data['top_'.$currency];
+            $error = new WP_Error(
+                'donation_amount_too_great',
+                sprintf(
+                    __('Donation amount you entered is too great (maximum %s allowed)', 'leyka'),
+                    $top_amount_allowed.' '.leyka_options()->opt("currency_{$currency}_label")
+                )
+            );
+            leyka()->add_payment_form_error($error);
+        }
+
+        if(
+            !empty($form_data['bottom_'.$currency]) &&
+            $form_data['leyka_donation_amount'] < $form_data['bottom_'.$currency]
+        ) {
+            $bottom_amount_allowed = $form_data['bottom_'.$currency];
+            $error = new WP_Error(
+                'donation_amount_too_small',
+                sprintf(
+                    __('Donation amount you entered is too small (minimum %s allowed)', 'leyka'),
+                    $bottom_amount_allowed.' '.leyka_options()->opt("currency_{$currency}_label")
+                )
+            );
+            leyka()->add_payment_form_error($error);
+        }
+
+        if(empty($form_data['leyka_agree'])) {
+            $error = new WP_Error('terms_not_agreed', __('You must agree to the terms of donation service', 'leyka'));
+            leyka()->add_payment_form_error($error);
+        }
+    }
+
+    /**
+     * @param Leyka_Payment_Method $pm New PM to add to a gateway.
+     * @param bool $replace_if_exists True to replace an existing PM (if it exists). False by default.
+     * @return bool True if PM was added/replaced, false otherwise.
+     */
+    public function add_payment_method(Leyka_Payment_Method $pm, $replace_if_exists = false) {
+
+        if(empty($this->_payment_methods[$pm->id]) || !!$replace_if_exists) {
+            $this->_payment_methods[$pm->id] = $pm;
+            return true;
+        }
+
+        return false;
+    }
+
+    /** @param mixed $pm A PM object or it's ID to remove from gateway. */
+    public function remove_payment_method($pm) {
+
+        if(is_object($pm) && $pm instanceof Leyka_Payment_Method)
+            unset($this->_payment_methods[$pm->id]);
+        else if(strlen($pm) && !empty($this->_payment_methods[$pm]))
+            unset($this->_payment_methods[$pm->id]);
+    }
 
     /**
      * @param mixed $activity True to select only active PMs, false for only non-active ones,

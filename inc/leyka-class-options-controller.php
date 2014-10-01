@@ -15,6 +15,8 @@ class Leyka_Options_Controller {
 
     private function __construct() {
 
+        require_once(LEYKA_PLUGIN_DIR.'inc/leyka-options-meta.php');
+
         global $options_meta;
 
         foreach($options_meta as $name => &$data) {
@@ -87,8 +89,8 @@ class Leyka_Options_Controller {
         if( !empty($params['type']) ) // Just in case
             unset($params['type']);
 
-        $value_saved = maybe_unserialize(get_option($name)); 
-        
+        $value_saved = maybe_unserialize(get_option($name));
+
         if(empty($params['value']) && $value_saved !== false)
             $params['value'] = $value_saved;
         else if(empty($params['value']) && !empty($params['default']))
