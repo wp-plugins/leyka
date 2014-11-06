@@ -226,6 +226,66 @@ jQuery(document).ready(function($){
         if(event.keyCode == 27)
             $('#lean_overlay').click();
     });
+	
+	
+	/** Donors list width detection **/
+	function leykaWidths() {
+		$('.leyka-donors-list').each(function(){
+		
+			var w = $(this).width();
+			if (parseInt(w) > 400) {
+				$(this).addClass('wide');
+			}
+			else {
+				$(this).removeClass('wide');
+			}
+		});
+		
+		$('.leyka-scale').each(function(){
+		
+			var w = $(this).width();
+			if (parseInt(w) > 500) {
+				$(this).addClass('wide'); 				
+			}
+			else {
+				$(this).removeClass('wide');				
+			}
+		});
+		
+		$('.leyka-campaign-card').each(function(){
+			var w = $(this).width();
+			if (parseInt(w) > 500) {
+				$(this).addClass('wide');
+			}
+			else {
+				$(this).removeClass('wide');
+			}
+		});
+		
+		$('.leyka-campaign-list-item.has-thumb').each(function(){
+			var w = $(this).width();
+			if (parseInt(w) < 280) {
+				$(this).addClass('narrow');
+			}
+			else {
+				$(this).removeClass('narrow');
+			}
+		});
+	}
+	
+	leykaWidths();
+	$(window).resize(function(){
+		leykaWidths();
+	});
+	
+	//scroll
+	$("a.leyka-scroll").on('click', function(e){
+		e.preventDefault();
+		var target_top = parseInt($("#leyka-payment-form").offset().top) -50;
+		//var target_top = target_offset.top;
+				
+		$('html, body').animate({scrollTop:target_top}, 500);
+	});
 });
 
 function is_email(email) {
