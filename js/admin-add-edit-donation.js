@@ -94,21 +94,6 @@ jQuery(document).ready(function($){
         $('#donation-status-log').slideToggle(100);
     });
 
-    $('.send-donor-thanks').click(function(e){
-        e.preventDefault();
-
-        var $wrap = $(this).parent(),
-            donation_id = $wrap.data('donation-id');
-
-        $(this).fadeOut(100, function(){ $(this).html('<img src="'+leyka.ajax_loader_url+'" />').fadeIn(100); });
-
-        $wrap.load(leyka.ajaxurl, {
-            action: 'leyka_send_donor_email',
-            nonce: $wrap.find('#_leyka_donor_email_nonce').val(),
-            donation_id: donation_id
-        });
-    });
-
     $('input[name*=leyka_pm_available]').change(function(){
         var $this = $(this),
             pm = $this.val();
@@ -140,10 +125,10 @@ jQuery(document).ready(function($){
         $('#campaign-select-trigger').slideDown(100);
     });
 
-    // If single donation page is opened, don't show "cancel this recurrents" metabox:
-    $('#hide-recurrent-metabox').each(function(){
-        $(this).parents('#leyka_donation_recurrent_cancel').hide();
-    });
+    // If single donation page is opened, show "cancel this recurrents" metabox if needed:
+//    if($('#hide-recurrent-metabox').length) {
+//        $('#leyka_donation_recurrent_cancel').hide();
+//    }
 
     $('.recurrent-cancel').click(function(e){
         e.preventDefault();

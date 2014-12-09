@@ -2,7 +2,7 @@
 Contributors: Ahaenor, foralien, denis.cherniatev
 Author URI: http://te-st.ru
 Plugin URI: http://leyka.te-st.ru
-Tags: e-donate, donates, charity, wp-donates, crowdfunding, leyka
+Tags: e-donate, donates, donations, charity, wp-donates, crowdfunding, leyka
 Requires at least: 3.6.1
 Tested up to: 4.0.1
 Stable tag: trunk
@@ -69,6 +69,13 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 9. Пример квитанции для оплаты через банк
 
 == Changelog ==
+
+= 2.2.1 =
+ * New: added RBK Money gateway support.
+ * New: added WebMoney support in Yandex.money gateway.
+ * New: added new Leyka_Payment_Method class attribute. Now PM labels on frontend and backend can be different.
+ * New: added shortcode for Terms Of Service text output.
+ * Fix: small fixes.
 
 = 2.2 =
  * New: campaigns now has optional target sum parameters.

@@ -202,9 +202,9 @@ class Leyka_Donation_Management {
 
     public static function send_all_emails($donation) {
 
-        if((int)$donation > 0)
+        if(is_int($donation) && (int)$donation > 0)
             $donation = (int)$donation;
-        elseif( !is_object($donation) || is_a($donation, 'WP_Post') )
+        elseif( !is_object($donation) && !is_a($donation, 'WP_Post') && !is_a($donation, 'Leyka_Donation') )
             return false;
 
         $donation = new Leyka_Donation($donation);
@@ -240,7 +240,7 @@ class Leyka_Donation_Management {
 
         if(is_int($donation) && (int)$donation > 0)
             $donation = (int)$donation;
-        if( !is_object($donation) || !is_a($donation, 'WP_Post') )
+        elseif( !is_object($donation) && !is_a($donation, 'WP_Post') && !is_a($donation, 'Leyka_Donation') )
             return false;
 
         $donation = new Leyka_Donation($donation);
@@ -321,14 +321,14 @@ class Leyka_Donation_Management {
 
         if((int)$donation > 0)
             $donation = (int)$donation;
-        elseif( !is_object($donation) || is_a($donation, 'WP_Post') )
+        elseif( !is_object($donation) && is_a($donation, 'WP_Post') && !is_a($donation, 'Leyka_Donation') )
             return false;
 
         $donation = new Leyka_Donation($donation);
 
         if( !leyka_options()->opt('donations_managers_emails') )
             return false;
-        $donation_obj = $donation;
+
         $donation = new Leyka_Donation($donation);
         if($donation->managers_emails_date)
             return false;
@@ -693,7 +693,7 @@ class Leyka_Donation_Management {
                 $gateway = leyka_get_gateway_by_id($donation->gateway_id);
 
                 echo ($pm ? $pm->label : __('Unknown payment method', 'leyka'))
-                    .' ('.($gateway ? mb_strtolower($gateway->label) : __('unknown gateway', 'leyka')).')';
+                    .' ('.($gateway ? $gateway->label : __('unknown gateway', 'leyka')).')';
                 ?>
 			    </span>
             <?php }?>
@@ -739,6 +739,7 @@ class Leyka_Donation_Management {
 	<?php }
 
     public function donation_status_metabox($donation) {
+
         wp_nonce_field('donation_status_metabox', '_donation_edit_nonce');
 
         $is_adding_page = get_current_screen()->action == 'add';?>
@@ -855,11 +856,20 @@ class Leyka_Donation_Management {
         </div>
     <?php }
 
-    public function recurrent_cancel_metabox($donation) { $donation = new Leyka_Donation($donation);
+    public function recurrent_cancel_metabox($donation) {
 
-        if($donation->payment_type != 'rebill') {?>
+        /** @todo Uncomment this metabox in constructor when work on recurrents cancelling will begin. */
+
+        $donation = new Leyka_Donation($donation);
+
+        if($donation->payment_type != 'rebill' || !function_exists('curl_init')) {?>
             <div id="hide-recurrent-metabox"></div>
         <?php return; } else {
+
+            /**
+             * @todo All this code may need to be in Gateway class - it's too many Chronopay things here.
+             * Must think how to make all this more gateway-independent.
+             */
             $init_recurrent_donation = Leyka_Donation::get_init_recurrent_payment($donation->chronopay_customer_id);
             if($init_recurrent_donation->recurrents_cancelled) {?>
 
@@ -1224,7 +1234,14 @@ class Leyka_Donation {
 
             $meta['leyka_donation_amount'] = empty($meta['leyka_donation_amount']) ?
                 0.0 : (float)$meta['leyka_donation_amount'][0];
+
+            if( !empty($meta['leyka_campaign_id']) ) {
+                $campaign = new Leyka_Campaign((int)$meta['leyka_campaign_id'][0]);
+                $payment_title = $campaign->payment_title ? $campaign->payment_title : $campaign->title;
+            }
+
             $this->_donation_meta = array(
+                'payment_title' => empty($payment_title) ? $this->_post_object->post_title : $payment_title,
                 'payment_type' => empty($meta['leyka_payment_type']) ? 'single' : $meta['leyka_payment_type'][0],
                 'payment_method' => empty($meta['leyka_payment_method']) ? '' : $meta['leyka_payment_method'][0],
                 'gateway' => empty($meta['leyka_gateway']) ? '' : $meta['leyka_gateway'][0],
@@ -1238,7 +1255,7 @@ class Leyka_Donation {
                     '' : $meta['_leyka_donor_email_date'][0],
                 'managers_emails_date' => empty($meta['_leyka_managers_emails_date']) ?
                     '' : $meta['_leyka_managers_emails_date'][0],
-                'campaign_id' => empty($meta['leyka_campaign_id']) ? '' : (int)$meta['leyka_campaign_id'][0],
+                'campaign_id' => empty($campaign) ? 0 : $campaign->id,
                 'status_log' => empty($meta['_status_log']) ? '' : maybe_unserialize($meta['_status_log'][0]),
                 'gateway_response' => empty($meta['leyka_gateway_response']) ? '' : $meta['leyka_gateway_response'][0],
                 'recurrents_cancelled' => isset($meta['leyka_recurrents_cancelled']) ?
@@ -1259,9 +1276,10 @@ class Leyka_Donation {
             case 'ID': return $this->_id;
             case 'title':
             case 'name': return $this->_post_object->post_title;
+            case 'purpose':
+            case 'payment_title':
             case 'campaign_payment_title':
-                $campaign = new Leyka_Campaign($this->campaign_id);
-                return $campaign->payment_title ? $campaign->payment_title : $campaign->title;
+                return $this->_donation_meta['payment_title'];
             case 'status': return $this->_post_object->post_status;
             case 'status_label':
                 $stati = leyka_get_donation_status_list();

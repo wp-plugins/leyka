@@ -17,7 +17,7 @@ function leyka_render_section_area($section){?>
 
 /** Text fields */
 add_action('leyka_render_text', 'leyka_render_text_field', 10, 2);
-function leyka_render_text_field($option_name, $data){
+function leyka_render_text_field($option_name, $data){ 
     $option_name = stristr($option_name, 'leyka_') ? $option_name : 'leyka_'.$option_name;?>
 
     <div id="<?php echo $option_name.'-wrapper'?>">
@@ -27,7 +27,7 @@ function leyka_render_text_field($option_name, $data){
                 <?php echo $data['required'] ? '<span class="required">*</span>' : '';?>
             </span>
             <span class="field-component field">
-                <input type="text" id="<?php echo $option_name.'-field';?>" name="<?php echo $option_name;?>" value="<?php echo esc_attr($data['value']);?>" placeholder="<?php echo esc_attr($data['placeholder']);?>" maxlength="<?php echo $data['length'];?>" />
+                <input type="<?php echo empty($data['is_password']) ? 'text' : 'password';?>" id="<?php echo $option_name.'-field';?>" name="<?php echo $option_name;?>" value="<?php echo esc_attr($data['value']);?>" placeholder="<?php echo esc_attr($data['placeholder']);?>" maxlength="<?php echo $data['length'];?>" />
             </span>
             <span class="field-component help"><?php echo esc_attr($data['description']);?></span>
         </label>
@@ -158,7 +158,7 @@ function leyka_render_multi_select_field($option_name, $data) {
 
 /** Textarea fields */
 add_action('leyka_render_textarea', 'leyka_render_textarea_field', 10, 2);
-function leyka_render_textarea_field($option_name, $data){
+function leyka_render_textarea_field($option_name, $data){ 
     $option_name = stristr($option_name, 'leyka_') ? $option_name : 'leyka_'.$option_name;?>
 
     <div id="<?php echo $option_name.'-wrapper'?>">
@@ -179,7 +179,7 @@ function leyka_render_textarea_field($option_name, $data){
 
 /** Simple HTML fields */
 add_action('leyka_render_html', 'leyka_render_html_field', 10, 2);
-function leyka_render_html_field($option_name, $data){
+function leyka_render_html_field($option_name, $data){ 
     $option_name = stristr($option_name, 'leyka_') ? $option_name : 'leyka_'.$option_name; ?>
 
     <div id="<?php echo $option_name.'-wrapper'?>">
