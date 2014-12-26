@@ -2,7 +2,7 @@
 Contributors: Ahaenor, foralien, denis.cherniatev
 Author URI: http://te-st.ru
 Plugin URI: http://leyka.te-st.ru
-Tags: crowdfunding, leyka, fundrising, e-donate, donates, donations, charity, wp-donates
+Tags: e-donate, donates, donations, charity, wp-donates, crowdfunding, leyka, crowdfunding, fundrising
 Requires at least: 3.6.1
 Tested up to: 4.1
 Stable tag: trunk
@@ -13,11 +13,11 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 == Description ==
 
-«Онлайн-Лейка» — плагин для краудфандинга, фандрайзинга и сбора пожертвований на сайте для физических и юридических лиц. Поддерживаются платежи кредитными карточками Visa и MasterCard  через **Chronopay и RBK money**, так же подключаются **WebMoney, Яндекс.Деньги (YandexMoney)** и традиционные квитанции.
+«Онлайн-Лейка» — это плагин для краудфандинга, фандрайзинга и сбора пожертвований на вашем сайте. Поддерживаются платежи кредитными карточками Visa и MasterCard  через **Chronopay и RBK money**, так же подключаются **WebMoney, Яндекс.Деньги (YandexMoney)** и традиционные квитанции.
 
-Официальный сайт плагина: [leyka.te-st.ru](http://leyka.te-st.ru/)
+**Официальный сайт плагина:** [leyka.te-st.ru](http://leyka.te-st.ru/)
 
-Следите за разработкой на [GitHub](https://github.com/Teplitsa/Leyka)
+**Следите за разработкой на** [GitHub](https://github.com/Teplitsa/Leyka)
 
 Задача плагина — облегчить и усовершенствовать интеграцию сбора пожертвований на сайте.
 
@@ -25,7 +25,7 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 * Функции сбора пожертвований доступны сразу после установки.
 * Многие важные параметры заданы автоматически. Например, юридически корректный текст договора оферты на пожертвование.
 
-Плагин предназначен для всех, кто собирает деньги в интеренете, в т.ч. НКО.
+Плагин предназначен для всех, кто собирает деньги в интернете, в т.Ч. НКО.
 
 **Внимание:** для сбора пожертвований с помощью популярных платёжных систем необходимо иметь договор с этими системами. Полный список платежных систем, которые поддерживает плагин, вы можете найти в [документации](http://leyka.te-st.ru/sistemnye-trebovaniya/)
 
