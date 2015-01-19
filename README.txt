@@ -16,7 +16,7 @@ License URI: http://www.gnu.org/licenses/gpl-2.0.html
 «Онлайн-Лейка» — это плагин для краудфандинга, фандрайзинга и сбора пожертвований на вашем сайте. Поддерживаются платежи банковскими картами Visa и MasterCard через **Chronopay и RBK money**, также подключаются **WebMoney, Яндекс.Деньги (YandexMoney)** и традиционные квитанции.
 
 _For English description scroll down, please._
-=======
+
 **Официальный сайт плагина:** [leyka.te-st.ru](http://leyka.te-st.ru/)
 
 Плагин разработан и поддерживается [Теплицей социальных технологий](//te-st.ru/).
