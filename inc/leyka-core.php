@@ -97,12 +97,13 @@ class Leyka {
                 do_action('leyka_service_call-'.$request[0], $request[1]);
                 exit();
             }
-            
         });
 
         add_action('template_redirect', array($this, 'gateway_redirect_page'), 1, 1);
 
 		$this->apply_formatting_filters(); // Internal formatting filters
+
+//        new Non_existing_class; /** @todo  */
 
         /** Currencies rates auto refreshment: */
         if( !wp_next_scheduled('refresh_currencies_rates') )
@@ -304,8 +305,6 @@ class Leyka {
         update_option('leyka_permalinks_flushed', 0);
 
         update_option('leyka_last_ver', LEYKA_VERSION);
-
-        // ...
     }
 
 	/**
@@ -348,7 +347,7 @@ class Leyka {
             $this->_version,
 			true
         );
-		
+
 		$js_data = apply_filters('leyka_js_localized_strings', array(
 			'ajaxurl' => admin_url('admin-ajax.php'),
             'correct_donation_amount_required' => __('Donation amount must be specified to submit the form', 'leyka'),
