@@ -338,7 +338,7 @@ class Leyka_Admin_Setup {
 		<h2 class="nav-tab-wrapper"><?php echo $this->settings_tabs_menu();?></h2>
 
 		<div id="tab-container">
-			<form method="post" action="<?php echo admin_url($faction); ?>" id="leyka-settings-form">
+			<form method="post" action="<?php echo admin_url($faction);?>" id="leyka-settings-form">
 
             <?php
 				wp_nonce_field("leyka_settings_{$current_stage}", '_leyka_nonce');
@@ -451,7 +451,7 @@ class Leyka_Admin_Setup {
                 'infoFiltered' => __('(filtered from _MAX_ total entries)', 'leyka'),
                 'infoThousands' => __(',', 'leyka'),
                 'loadingRecords' => __('Loading...', 'leyka'),
-                'infoPostFix' => __('', 'leyka'),
+                'infoPostFix' => '',
                 'zeroRecords' => __('No matching records found', 'leyka'),
                 'emptyTable' => __('No data available in table', 'leyka'),
                 'paginate_first' => __('First', 'leyka'),

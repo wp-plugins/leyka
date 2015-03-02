@@ -1,5 +1,7 @@
 # [Лейка](http://leyka.te-st.ru) #
 
+![](http://te-st.ru/wp-content/uploads/2015/02/first-year.png)
+
 **Scroll down for english description, please**
 
 Лейка - плагин для краудфандинга, фандрайзинга и сбора пожертвований на сайте для физических и юридических лиц. Поддерживаются платежи банковскими картами Visa и MasterCard через **Chronopay и RBK money**, также подключаются **WebMoney, Яндекс.Деньги (YandexMoney)** и традиционные квитанции.
@@ -49,6 +51,21 @@
 * Сделать перевод плагина или оптимизировать его для вашей страны.
     
 Если у вас есть вопросы по работе плагина, то обратитесь к нам за поддержкой на [GitHub](https://github.com/Teplitsa/Leyka/issues/).
+
+## Как все устроено ##
+
+Визуализация прогресса кампании
+![](https://leyka.te-st.ru/wp-content/uploads/assets/1-sc-campaign.png?stamp=123)
+
+Список пожертвований
+![](https://leyka.te-st.ru/wp-content/uploads/assets/2-sc-donations.png?stamp=123)
+
+Управление кампаниями
+![](https://leyka.te-st.ru/wp-content/uploads/assets/3-sc-admin.png?stamp=123)
+
+Платежная форма
+![](https://leyka.te-st.ru/wp-content/uploads/assets/4-sc-payment.png?stamp=123)
+
 
 **ВНИМАНИЕ!**
 

@@ -83,7 +83,7 @@ class Leyka {
 		if(is_admin())
 			$this->admin_setup();
 
-		/** Handlers: */
+		/** Service URLs handler: */
         add_action('parse_request', function($request){
             // Callback URLs are: some-site.org/leyka/service/{gateway_id}/{action_name}/
             // For ex., leyka.ngo2.ru/leyka/service/yandex/check_order/
@@ -99,21 +99,40 @@ class Leyka {
             }
         });
 
+        /** Embed campaign URL handler: */
+        add_filter('template_include', function($template){
+
+            if(is_main_query() && is_singular(Leyka_Campaign_Management::$post_type) && !empty($_GET['embed'])) {
+
+                $new_template = leyka_get_current_template_data(false, 'embed', true);
+                if($new_template && !empty($new_template['file'])) {
+                    $template = $new_template['file'];
+                }
+            }
+
+            return $template;
+        }, 100);
+
         add_action('template_redirect', array($this, 'gateway_redirect_page'), 1, 1);
 
 		$this->apply_formatting_filters(); // Internal formatting filters
 
 //        new Non_existing_class; /** @todo  */
 
-        /** Currencies rates auto refreshment: */
-        if( !wp_next_scheduled('refresh_currencies_rates') )
-            wp_schedule_event(time(), 'daily', 'refresh_currencies_rates');
+        /** Currency rates auto refreshment: */
+        if(leyka_options()->opt('auto_refresh_currency_rates')) {
 
-        add_action('refresh_currencies_rates', array($this, 'do_currencies_rates_refresh'));
+            if( !wp_next_scheduled('refresh_currencies_rates') )
+                wp_schedule_event(time(), 'daily', 'refresh_currencies_rates');
 
-        // Just in case:
-        if( !get_option('leyka__course_rur2usd') || !get_option('leyka__course_rur2eur') )
-            $this->do_currency_rates_refresh();
+            add_action('refresh_currencies_rates', array($this, 'do_currencies_rates_refresh'));
+
+            // Just in case:
+            if( !leyka_options()->opt('currency_rur2usd') || !leyka_options()->opt('currency_rur2eur') )
+                $this->do_currency_rates_refresh();
+        } else {
+            wp_clear_scheduled_hook('refresh_currencies_rates');
+        }
 
         do_action('leyka_initiated');
 	}
@@ -121,7 +140,7 @@ class Leyka {
     public function do_currency_rates_refresh() {
 
         foreach(leyka_get_actual_currency_rates() as $currency => $rate) {
-            add_option('leyka__course_rur2'.mb_strtolower($currency), $rate);
+            update_option('leyka_currency_rur2'.mb_strtolower($currency), $rate);
         }
     }
 
@@ -582,9 +601,6 @@ class Leyka {
      */
     public function gateway_redirect_page() {
 
-        global $wp_query;
-
-        // isset($wp_query->query_vars['name']) && $wp_query->query_vars['name'] == 'leyka-process-donation'
 		if(stristr($_SERVER['REQUEST_URI'], 'leyka-process-donation')) {
             
             if(empty($_POST)) {
@@ -610,7 +626,7 @@ class Leyka {
 
                 header('HTTP/1.1 200 OK');
 
-                include(LEYKA_PLUGIN_DIR.'templates/leyka-gateway-redirect-page.php'); // Show Gateway redirect page
+                require_once(LEYKA_PLUGIN_DIR.'templates/service/leyka-gateway-redirect-page.php');
                 exit();
             }
 		}
@@ -697,42 +713,52 @@ class Leyka {
 	/**
 	 * Templates manipulations
 	 **/
-	public function get_templates() { 
-		if(empty($this->templates)) { 
+	public function get_templates($is_service = false) {
+
+		if(empty($this->templates)) {
+
 			$this->templates = glob(STYLESHEETPATH.'/leyka-template-*.php');
 			if($this->templates === false || empty($this->templates)) { // If global hits an error, it returns false
 
 				// Let's search in own folder:
-				$this->templates = glob(LEYKA_PLUGIN_DIR . 'templates/leyka-template-*.php');
+				$this->templates = glob(
+                    LEYKA_PLUGIN_DIR.'templates'.($is_service ? '/service' : '').'/leyka-template-*.php'
+                );
 				
-				if($this->templates === false)
+				if($this->templates === false) {
 					$this->templates = array();
+                }
 			}
-			// get data
+
 			$this->templates = array_map(array($this, 'get_template_data'), $this->templates);
 		}
+
 		return (array)$this->templates;
 	}
 
 	public function get_template_data($file) {
+
 		$headers = array(
-			'name' => 'Leyka Template',
-			'description' => 'Description'			
+			'name' => 'Leyka Template', 
+			'description' => 'Description',
 		);
 
-		$data = get_file_data($file, $headers);
+		$data = get_file_data($file, $headers); 
 		$data['file'] = $file;
 		$data['basename'] = basename($file);
 		$id = explode('-', str_replace('.php', '', $data['basename']));
-		$data['id'] = end($id); //otherwise we'll get error in php 5.4.x
-		if(empty($data['name']))
+		$data['id'] = end($id); // Otherwise error appears in php 5.4.x
+
+		if(empty($data['name'])) {
 			$data['name'] = $data['basename'];
+        }
+
 		return $data;
 	}
 	
-	public function get_template($basename) {
+	public function get_template($basename, $is_service = false) {
 		
-		$templates = $this->get_templates();
+		$templates = $this->get_templates($is_service);
 		if( !$templates )
 			return false;
 		
@@ -740,7 +766,7 @@ class Leyka {
 		foreach($templates as $template) {
 			
 			$cur_basename = explode('-', str_replace('.php', '', $template['basename']));
-            $cur_basename = end($cur_basename); //otherwise error in PHP 5.4.x
+            $cur_basename = end($cur_basename); // Otherwise error appears in PHP 5.4.x
 			if($cur_basename == $basename) {
 				$active = $template;
                 break;
@@ -750,10 +776,9 @@ class Leyka {
 		return $active;
 	}
 
-} //class end
+} // Leyka class end
 
 // Shorthands for singletons instances:
-
 /**
  * @return Leyka Core object
  */
