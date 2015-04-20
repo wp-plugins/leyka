@@ -4,12 +4,6 @@
 class Leyka {
 
     /**
-     * Plugin version, used for cache-busting of style and script file references.
-     * @var string
-     */
-//    private $_version = LEYKA_VERSION;
-
-    /**
      * Unique identifier for your plugin.
      *
      * Use this value (not the variable name) as the text domain when internationalizing strings of text. It should
@@ -25,19 +19,10 @@ class Leyka {
     private static $_instance = null;
 
     /**
-     * Slug of the plugin screen.
-     * @var string
-     */
-    // private $_plugin_screen_hook_suffix = null;
-
-    /**
      * Gateways list.
      * @var array
      */
     private $_gateways = array();
-
-    /** @var bool Set in true if gateways addition already processed. */
-    // private $_gateways_added = false;
 
     /** @var array Of WP_Error instances. */
     private $_form_errors = array();
@@ -59,11 +44,12 @@ class Leyka {
 
         if( !get_option('leyka_permalinks_flushed') ) {
 
-            add_action('init', function(){
+            function leyka_flush_rewrite_rules() {
 
                 flush_rewrite_rules(false);
                 update_option('leyka_permalinks_flushed', 1);
-            });
+            }
+            add_action('init', 'leyka_flush_rewrite_rules');
         }
 
         // By default, we'll assume some errors in the payment form, so redirect will get us back to it:
@@ -84,6 +70,8 @@ class Leyka {
 
         if(is_admin() && current_user_can('leyka_manage_donations'))
             $this->admin_setup();
+        else if( !is_admin() )
+            add_action('admin_bar_menu', array($this, 'leyka_add_toolbar_menu'), 999);
 
         /** Service URLs handler: */
         add_action('parse_request', function($request){
@@ -106,7 +94,7 @@ class Leyka {
 
             if(is_main_query() && is_singular(Leyka_Campaign_Management::$post_type) && !empty($_GET['embed'])) {
 
-                $new_template = leyka_get_current_template_data(false, 'embed', true);
+                $new_template = leyka_get_current_template_data(false, 'embed_'.$_GET['embed'], true);
                 if($new_template && !empty($new_template['file'])) {
                     $template = $new_template['file'];
                 }
@@ -137,6 +125,40 @@ class Leyka {
         }
 
         do_action('leyka_initiated');
+    }
+
+    public function leyka_add_toolbar_menu(WP_Admin_Bar $wp_admin_bar) {
+
+        $wp_admin_bar->add_node(array(
+            'id' => 'leyka-toolbar-menu',
+            'title' => __('Leyka', 'leyka'),
+            'href' => admin_url('admin.php?page=leyka'),
+        ));
+
+        $wp_admin_bar->add_node(array(
+            'id'     => 'leyka-toolbar-desktop',
+            'title'  => __('Desktop', 'leyka'),
+            'parent' => 'leyka-toolbar-menu',
+            'href' => admin_url('admin.php?page=leyka'),
+        ));
+        $wp_admin_bar->add_node(array(
+            'id'     => 'leyka-toolbar-donations',
+            'title'  => __('Donations', 'leyka'),
+            'parent' => 'leyka-toolbar-menu',
+            'href' => admin_url('edit.php?post_type='.Leyka_Donation_Management::$post_type),
+        ));
+        $wp_admin_bar->add_node(array(
+            'id'     => 'leyka-toolbar-campaigns',
+            'title'  => __('Campaigns', 'leyka'),
+            'parent' => 'leyka-toolbar-menu',
+            'href' => admin_url('edit.php?post_type='.Leyka_Campaign_Management::$post_type),
+        ));
+        $wp_admin_bar->add_node(array(
+            'id'     => 'leyka-toolbar-settings',
+            'title'  => __('Settings', 'leyka'),
+            'parent' => 'leyka-toolbar-menu',
+            'href' => admin_url('admin.php?page=leyka_settings'),
+        ));
     }
 
     public function do_currency_rates_refresh() {
@@ -394,8 +416,8 @@ class Leyka {
 
         require_once(LEYKA_PLUGIN_DIR.'inc/leyka-class-options-allocator.php');
         require_once(LEYKA_PLUGIN_DIR.'inc/leyka-render-settings.php');
-        require_once(LEYKA_PLUGIN_DIR.'/inc/leyka-admin.php');
-        require_once(LEYKA_PLUGIN_DIR.'/inc/leyka-donations-export.php');
+        require_once(LEYKA_PLUGIN_DIR.'inc/leyka-admin.php');
+        require_once(LEYKA_PLUGIN_DIR.'inc/leyka-donations-export.php');
 
         Leyka_Admin_Setup::get_instance();
     }
@@ -414,23 +436,28 @@ class Leyka {
         );
 
         $role = get_role('administrator');
-        foreach($caps as $cap => $true) {
+        if(empty($role->capabilities['leyka_manage_donations'])) {
 
-            $cap_donation = str_replace('#base#', 'donation', $cap);
-            $role->add_cap($cap_donation, true);
-            $caps[$cap_donation] = true;
+            foreach($caps as $cap => $true) {
 
-            $cap_campaign = str_replace('#base#', 'campaign', $cap);
-            $role->add_cap($cap_campaign, true);
-            $caps[$cap_campaign] = true;
+                $cap_donation = str_replace('#base#', 'donation', $cap);
+                $role->add_cap($cap_donation, TRUE);
+                $caps[$cap_donation] = TRUE;
 
-            if(stristr($cap, '#base#') !== false)
-                unset($caps[$cap]);
+                $cap_campaign = str_replace('#base#', 'campaign', $cap);
+                $role->add_cap($cap_campaign, TRUE);
+                $caps[$cap_campaign] = TRUE;
+
+                if(stristr($cap, '#base#') !== FALSE)
+                    unset($caps[$cap]);
+            }
+            $role->add_cap('leyka_manage_options', TRUE);
         }
-        $role->add_cap('leyka_manage_options', true);
 
-        add_role('donations_manager', __('Donations Manager', 'leyka'), $caps);
-        add_role('donations_administrator', __('Donations Administrator', 'leyka'), array_merge($caps, array('leyka_manage_options' => true,)));
+        if( !get_role('donations_manager') )
+            add_role('donations_manager', __('Donations Manager', 'leyka'), $caps);
+        if( !get_role('donations_administrator') )
+            add_role('donations_administrator', __('Donations Administrator', 'leyka'), array_merge($caps, array('leyka_manage_options' => true,)));
     }
 
     /**
@@ -497,7 +524,7 @@ class Leyka {
             'show_in_nav_menus' => true,
             'show_in_menu' => false,
             'show_in_admin_bar' => true,
-            'supports' => array('title', 'editor', 'thumbnail', 'excerpt'),
+            'supports' => array('title', 'editor', 'thumbnail'),
             'taxonomies' => array(),
             'has_archive' => true,
             'capability_type' => 'campaign',
@@ -680,23 +707,35 @@ class Leyka {
      **/
     public function get_templates($is_service = false) {
 
-        if(empty($this->templates)) {
+//        if(empty($this->templates)) {
 
-            $this->templates = glob(STYLESHEETPATH.'/leyka-template-*.php');
-            if($this->templates === false || empty($this->templates)) { // If global hits an error, it returns false
 
-                // Let's search in own folder:
-                $this->templates = glob(
-                    LEYKA_PLUGIN_DIR.'templates'.($is_service ? '/service' : '').'/leyka-template-*.php'
-                );
+        //if($this->templates === false || empty($this->templates)) { // If global hits an error, it returns false
 
-                if($this->templates === false) {
-                    $this->templates = array();
-                }
-            }
-
-            $this->templates = array_map(array($this, 'get_template_data'), $this->templates);
+        if( !$this->templates ) {
+            $this->templates = array();
         }
+
+        if( !!$is_service ) {
+            $this->templates = glob(LEYKA_PLUGIN_DIR.'templates/service/leyka-template-*.php');
+        } else {
+
+            $custom_templates = glob(STYLESHEETPATH.'/leyka-template-*.php');
+            $custom_templates = $custom_templates ? $custom_templates : array();
+
+            $this->templates = array_merge(
+                $custom_templates,
+                glob(LEYKA_PLUGIN_DIR.'templates/leyka-template-*.php')
+            );
+        }
+
+        if( !$this->templates ) {
+            $this->templates = array();
+        }
+//            }
+
+        $this->templates = array_map(array($this, 'get_template_data'), $this->templates);
+//        }
 
         return (array)$this->templates;
     }
