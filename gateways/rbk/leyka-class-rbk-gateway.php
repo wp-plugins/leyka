@@ -7,10 +7,11 @@ class Leyka_Rbk_Gateway extends Leyka_Gateway {
 
     protected static $_instance;
 
-    protected function _set_gateway_attributes() {
+    protected function _set_attributes() {
 
         $this->_id = 'rbk';
         $this->_title = __('RBK Money', 'leyka');
+        $this->_docs_link = '//leyka.te-st.ru/docs/podklyuchenie-robokassa/#rbk-settings';
     }
 
     protected function _set_options_defaults() {
@@ -80,30 +81,21 @@ class Leyka_Rbk_Gateway extends Leyka_Gateway {
 
     protected function _initialize_pm_list() {
 
-        // Instantiate and save each of PM objects, if needed:
         if(empty($this->_payment_methods['bankcard'])) {
             $this->_payment_methods['bankcard'] = Leyka_Rbk_Card::get_instance();
-            $this->_payment_methods['bankcard']->initialize_pm_options();
         }
         if(empty($this->_payment_methods['rbkmoney'])) {
             $this->_payment_methods['rbkmoney'] = Leyka_Rbk_Money::get_instance();
-            $this->_payment_methods['rbkmoney']->initialize_pm_options();
         }
         if(empty($this->_payment_methods['rbk_all'])) {
             $this->_payment_methods['rbk_all'] = Leyka_Rbk_All::get_instance();
-            $this->_payment_methods['rbk_all']->initialize_pm_options();
         }
     }
 
     public function process_form($gateway_id, $pm_id, $donation_id, $form_data) {
     }
 
-    public function submission_redirect_url($current_url, $pm_id) {	
-	
-//        switch($pm_id) {
-//            default:
-//                $current_url = 'https://rbkmoney.ru/acceptpurchase.aspx';
-//        }
+    public function submission_redirect_url($current_url, $pm_id) {
 
         return 'https://rbkmoney.ru/acceptpurchase.aspx';
     }
@@ -271,80 +263,36 @@ class Leyka_Rbk_Gateway extends Leyka_Gateway {
 
 class Leyka_Rbk_Card extends Leyka_Payment_Method {
 
-    /** @var $_instance Leyka_Yandex_Card */
     protected static $_instance = null;
 
-    final protected function __clone() {}
+    public function _set_attributes() {
 
-    public final static function get_instance() {
-
-        if(null === static::$_instance) {
-            static::$_instance = new static();
-        }
-
-        return static::$_instance;
-    }
-
-    public function __construct(array $params = array()) {
-
-        if(static::$_instance) /** We can't make a public __construct() to private */ {
-            return static::$_instance;
-        }
-
-        $this->initialize_pm_options();
-
-        $this->_id = empty($params['id']) ? 'bankcard' : $params['id'];
-
-        $this->_label_backend = empty($params['label_backend']) ?
-            __('Payment with Banking Card', 'leyka') : $params['label_backend'];
-        $this->_label = empty($params['label']) ? __('Banking Card', 'leyka') : $params['label'];
-
-        $this->_description = empty($params['desc']) ?
-            leyka_options()->opt_safe('bankcard_description') : $params['desc'];
-
+        $this->_id = 'bankcard';
         $this->_gateway_id = 'rbk';
 
-        $this->_active = isset($params['active']) ? 1 : 0;
+        $this->_label_backend = __('Payment with Banking Card', 'leyka');
+        $this->_label = __('Banking Card', 'leyka');
 
-        $this->_support_global_fields = isset($params['has_global_fields']) ? $params['has_global_fields'] : true;
-
-        $this->_custom_fields = empty($params['custom_fields']) ? array() : (array)$params['custom_fields'];
+        // The description won't be setted here - it requires the PM option being configured at this time (which is not)
 
         $this->_icons = apply_filters('leyka_icons_'.$this->_gateway_id.'_'.$this->_id, array(
             LEYKA_PLUGIN_BASE_URL.'gateways/rbk/icons/visa.png',
             LEYKA_PLUGIN_BASE_URL.'gateways/rbk/icons/master.png',
         ));
 
-        $this->_submit_label = empty($params['submit_label']) ?
-            __('Donate', 'leyka') : $params['submit_label'];
+        $this->_supported_currencies[] = 'rur';
 
-        if(empty($params['currencies'])) {
-
-            $this->_supported_currencies[] = 'rur';
-
-//            if(leyka_options()->opt('bankcard_use_usd'))
-//                $this->_supported_currencies[] = 'usd';
-//            if(leyka_options()->opt('bankcard_use_eur'))
-//                $this->_supported_currencies[] = 'eur';
-
-        } else {
-            $this->_supported_currencies = $params['currencies'];
-        }
-
-        $this->_default_currency = empty($params['default_currency']) ? 'rur' : $params['default_currency'];
-
-        static::$_instance = $this;
-
-        return static::$_instance;
+        $this->_default_currency = 'rur';
     }
 
-    protected function _set_pm_options_defaults() {
+    protected function _set_options_defaults() {
 
-        if($this->_options)
+        if($this->_options) {
             return;
+        }
 
         $this->_options = array(
-            'bankcard_description' => array(
+            $this->full_id.'_description' => array(
                 'type' => 'html',
                 'default' => __('RBK Money allows a simple and safe way to pay for goods and services with bank cards and other means through internet. You will have to fill a payment form, and then you will be redirected to the <a href="https://rbkmoney.ru/">RBK Money</a> secure payment page to enter your bank card data and to confirm your payment.', 'leyka'),
                 'title' => __('RBK Money bank card payment description', 'leyka'),
@@ -352,95 +300,41 @@ class Leyka_Rbk_Card extends Leyka_Payment_Method {
                 'required' => 0,
                 'validation_rules' => array(), // List of regexp?..
             ),
-            /** @todo Check with RBK support if it's really possible to pay with a currency. */
-//			'bankcard_use_usd' => array(
-//                'type' => 'checkbox',
-//                'default' => 0,
-//                'title' => __('Allow donations in USD', 'leyka'),
-//                'description' => __('Please, check if RBK Money will allow your donors to use USD.', 'leyka'),
-//                'required' => 0,
-//                'validation_rules' => array(),
-//            ),
-//            'bankcard_use_eur' => array(
-//                'type' => 'checkbox',
-//                'default' => 0,
-//                'title' => __('Allow donations in EUR', 'leyka'),
-//                'description' => __('Please, check if RBK Money will allow your donors to use EUR.', 'leyka'),
-//                'required' => 0,
-//                'validation_rules' => array(),
-//            ),
         );
     }
 }
 
 class Leyka_Rbk_Money extends Leyka_Payment_Method {
 
-    /** @var $_instance Leyka_Rbk_Money */
     protected static $_instance = null;
 
-    final protected function __clone() {}
+    public function _set_attributes() {
 
-    public final static function get_instance() {
-
-        if(null === static::$_instance) {
-            static::$_instance = new static();
-        }
-
-        return static::$_instance;
-    }
-
-    public function __construct(array $params = array()) {
-
-        if(static::$_instance) /** We can't make a public __construct() to private */ {
-            return static::$_instance;
-        }
-
-        $this->initialize_pm_options();
-
-        $this->_id = empty($params['id']) ? 'rbkmoney' : $params['id'];
-
-        $this->_label_backend = empty($params['label_backend']) ?
-            __('Payment with RBK Money', 'leyka') : $params['label_backend'];
-        $this->_label = empty($params['label']) ? __('RBK Money', 'leyka') : $params['label'];
-
-        $this->_description = empty($params['desc']) ?
-            leyka_options()->opt_safe('rbkmoney_description') : $params['desc'];
-
+        $this->_id = 'rbkmoney';
         $this->_gateway_id = 'rbk';
 
-        $this->_active = isset($params['active']) ? 1 : 0;
+        $this->_label_backend = __('Payment with RBK Money', 'leyka');
+        $this->_label = __('RBK Money', 'leyka');
 
-        $this->_support_global_fields = isset($params['has_global_fields']) ? $params['has_global_fields'] : true;
-
-        $this->_custom_fields = empty($params['custom_fields']) ? array() : (array)$params['custom_fields'];
+        // The description won't be setted here - it requires the PM option being configured at this time (which is not)
 
         $this->_icons = apply_filters('leyka_icons_'.$this->_gateway_id.'_'.$this->_id, array(
             LEYKA_PLUGIN_BASE_URL.'gateways/rbk/icons/rbk.png',
         ));
 
-        $this->_submit_label = empty($params['submit_label']) ?
-            __('Donate', 'leyka') : $params['submit_label'];
+        $this->_supported_currencies[] = 'rur';
 
-        if(empty($params['currencies'])) {
-            $this->_supported_currencies[] = 'rur';
-        } else {
-            $this->_supported_currencies = $params['currencies'];
-        }
-
-        $this->_default_currency = empty($params['default_currency']) ? 'rur' : $params['default_currency'];
-
-        static::$_instance = $this;
-
-        return static::$_instance;
+        $this->_default_currency = 'rur';
     }
 
-    protected function _set_pm_options_defaults() {
+    protected function _set_options_defaults() {
 
-        if($this->_options)
+        if($this->_options) {
             return;
+        }
 
         $this->_options = array(
-            'rbkmoney_description' => array(
+            $this->full_id.'_description' => array(
                 'type' => 'html',
                 'default' => __('RBK Money allows a simple and safe way to pay for goods and services with bank cards and other means through internet. You will have to fill a payment form, and then you will be redirected to the <a href="https://rbkmoney.ru/">RBK Money</a> secure payment page to enter your bank card data and to confirm your payment.', 'leyka'),
                 'title' => __('RBK Money payment description', 'leyka'),
@@ -454,44 +348,17 @@ class Leyka_Rbk_Money extends Leyka_Payment_Method {
 
 class Leyka_Rbk_All extends Leyka_Payment_Method {
 
-    /** @var $_instance Leyka_Rbk_All */
     protected static $_instance = null;
 
-    final protected function __clone() {}
+    public function _set_attributes() {
 
-    public final static function get_instance() {
-
-        if(null === static::$_instance) {
-            static::$_instance = new static();
-        }
-
-        return static::$_instance;
-    }
-
-    public function __construct(array $params = array()) {
-
-        if(static::$_instance) /** We can't make a public __construct() to private */ {
-            return static::$_instance;
-        }
-
-        $this->initialize_pm_options();
-
-        $this->_id = empty($params['id']) ? 'rbk_all' : $params['id'];
-
-        $this->_label_backend = empty($params['label_backend']) ?
-            __('Use any RBK Money payment method available', 'leyka') : $params['label_backend'];
-        $this->_label = empty($params['label']) ? __('RBK Money (any)', 'leyka') : $params['label'];
-
-        $this->_description = empty($params['desc']) ?
-            leyka_options()->opt_safe('rbk_all_description') : $params['desc'];
-
+        $this->_id = 'rbk_all';
         $this->_gateway_id = 'rbk';
 
-        $this->_active = isset($params['active']) ? 1 : 0;
+        $this->_label_backend = __('Use any RBK Money payment method available', 'leyka');
+        $this->_label = __('RBK Money (any)', 'leyka');
 
-        $this->_support_global_fields = isset($params['has_global_fields']) ? $params['has_global_fields'] : true;
-
-        $this->_custom_fields = empty($params['custom_fields']) ? array() : (array)$params['custom_fields'];
+        // The description won't be setted here - it requires the PM option being configured at this time (which is not)
 
         $this->_icons = apply_filters('leyka_icons_'.$this->_gateway_id.'_'.$this->_id, array(
             LEYKA_PLUGIN_BASE_URL.'gateways/rbk/icons/visa.png',
@@ -499,29 +366,19 @@ class Leyka_Rbk_All extends Leyka_Payment_Method {
             LEYKA_PLUGIN_BASE_URL.'gateways/rbk/icons/rbk.png',
         ));
 
-        $this->_submit_label = empty($params['submit_label']) ?
-            __('Donate', 'leyka') : $params['submit_label'];
+        $this->_supported_currencies[] = 'rur';
 
-        if(empty($params['currencies'])) {
-            $this->_supported_currencies[] = 'rur';
-        } else {
-            $this->_supported_currencies = $params['currencies'];
-        }
-
-        $this->_default_currency = empty($params['default_currency']) ? 'rur' : $params['default_currency'];
-
-        static::$_instance = $this;
-
-        return static::$_instance;
+        $this->_default_currency = 'rur';
     }
 
-    protected function _set_pm_options_defaults() {
+    protected function _set_options_defaults() {
 
-        if($this->_options)
+        if($this->_options){
             return;
+        }
 
         $this->_options = array(
-            'rbk_all_description' => array(
+            $this->full_id.'_description' => array(
                 'type' => 'html',
                 'default' => __('RBK Money allows a simple and safe way to pay for goods and services with bank cards and other means through internet. You will have to fill a payment form, and then you will be redirected to the <a href="https://rbkmoney.ru/">RBK Money</a> secure payment page to enter your bank card data and to confirm your payment.', 'leyka'),
                 'title' => __('RBK Money all possible payment types description', 'leyka'),
@@ -536,4 +393,4 @@ class Leyka_Rbk_All extends Leyka_Payment_Method {
 function leyka_add_gateway_rbk() { // Use named function to leave a possibility to remove/replace it on the hook
     leyka()->add_gateway(Leyka_Rbk_Gateway::get_instance());
 }
-add_action('leyka_init_actions', 'leyka_add_gateway_rbk', 11);
+add_action('leyka_init_actions', 'leyka_add_gateway_rbk');

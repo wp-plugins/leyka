@@ -65,13 +65,17 @@ class Leyka {
         // User roles and capabilities:
         add_action('init', array($this, 'register_user_capabilities'));
 
-        if( !session_id() )
+        if( !session_id() ) {
             add_action('init', 'session_start', -2);
+        }
 
-        if(is_admin() && current_user_can('leyka_manage_donations'))
+        if(is_admin() && current_user_can('leyka_manage_donations')) {
             $this->admin_setup();
-        else if( !is_admin() )
+        }
+
+        if(current_user_can('leyka_manage_donations')) {
             add_action('admin_bar_menu', array($this, 'leyka_add_toolbar_menu'), 999);
+        }
 
         /** Service URLs handler: */
         add_action('parse_request', function($request){
@@ -153,12 +157,15 @@ class Leyka {
             'parent' => 'leyka-toolbar-menu',
             'href' => admin_url('edit.php?post_type='.Leyka_Campaign_Management::$post_type),
         ));
-        $wp_admin_bar->add_node(array(
-            'id'     => 'leyka-toolbar-settings',
-            'title'  => __('Settings', 'leyka'),
-            'parent' => 'leyka-toolbar-menu',
-            'href' => admin_url('admin.php?page=leyka_settings'),
-        ));
+
+        if(current_user_can('leyka_manage_options')) {
+            $wp_admin_bar->add_node(array(
+                'id'     => 'leyka-toolbar-settings',
+                'title'  => __('Settings', 'leyka'),
+                'parent' => 'leyka-toolbar-menu',
+                'href' => admin_url('admin.php?page=leyka_settings'),
+            ));
+        }
     }
 
     public function do_currency_rates_refresh() {
@@ -295,7 +302,7 @@ class Leyka {
     public static function activate($network_wide) {
 
         $leyka_last_ver = get_option('leyka_last_ver');
-        if( !$leyka_last_ver || (float)$leyka_last_ver < 2.1 ) {
+        if( !$leyka_last_ver || $leyka_last_ver < '2.1' ) {
 
             /** Upgrade options structure in the DB */
             if(get_option('leyka_modules'))
@@ -315,9 +322,9 @@ class Leyka {
                     update_option("leyka_$name", $option['value']);
             }
 
-            // Mostly to initialize gateways' and PM's options before updating them
-            //            if( !did_action('leyka_init_actions') )
-            //                do_action('leyka_init_actions');
+            // Mostly to initialize gateways' and PM's options before updating them:
+//            if( !did_action('leyka_init_actions') )
+//                do_action('leyka_init_actions');
 
             /** Upgrade gateway and PM options structure in the DB */
             foreach(leyka_get_gateways() as $gateway) {
@@ -346,19 +353,63 @@ class Leyka {
             }
         }
 
-        // Remove the unneeded scripts for settings pages:
-        if((float)$leyka_last_ver <= 2.5) {
+        if( !$leyka_last_ver || $leyka_last_ver <= '2.2.5' ) {
 
+            // Initialize pm_order option if needed:
+            if( !get_option('leyka_pm_order') ) {
+
+                $pm_list = array();
+                foreach(get_option('leyka_pm_available') as $pm_full_id) {
+
+                    $pm_list[] = "pm_order[]={$pm_full_id}";
+                }
+                update_option('leyka_pm_order', implode('&', $pm_list));
+            }
+
+            // Remove an unneeded scripts for settings pages:
             $settings_pages_dir = dir(LEYKA_PLUGIN_DIR.'inc/settings-pages/');
             while(false !== ($script = $settings_pages_dir->read())) {
 
-                if($script != '.' && $script != '..' && !in_array($script, array('leyka-settings-common.php',))) {
+                if(
+                    $script != '.' && $script != '..' &&
+                    !in_array($script, array('leyka-settings-common.php', 'leyka-settings-payment.php',))
+                ) {
                     unlink(LEYKA_PLUGIN_DIR.'inc/settings-pages/'.$script);
                 }
-
             }
-
             $settings_pages_dir->close();
+
+            // Remove an obsolete plugin options:
+            $options = array(
+                array('old' => 'chronopay_card_description', 'new' => 'chronopay-chronopay_card_description'),
+                array('old' => 'chronopay_card_rebill_description', 'new' => 'chronopay-chronopay_card_rebill_description'),
+                array('old' => 'bank_order_description', 'new' => 'quittance-bank_order_description'),
+                array('old' => 'bankcard_description', 'new' => 'rbk-bankcard_description'),
+                array('old' => 'rbkmoney_description', 'new' => 'rbk-rbkmoney_description'),
+                array('old' => 'rbk_all_description', 'new' => 'rbk-rbk_all_description'),
+                array('old' => 'robokassa_card_description', 'new' => 'robokassa-BANKOCEAN2_description'),
+                array('old' => 'robokassa_yandex_money_description', 'new' => 'robokassa-YandexMerchantOcean_description'),
+                array('old' => 'robokassa_webmoney_description', 'new' => 'robokassa-WMR_description'),
+                array('old' => 'robokassa_qiwi_description', 'new' => 'robokassa-Qiwi30Ocean_description'),
+                array('old' => 'robokassa_all_description', 'new' => 'robokassa-Other_description'),
+                array('old' => 'text_box_description', 'new' => 'text-text_box_description'),
+                array('old' => 'yandex_card_description', 'new' => 'yandex-yandex_card_description'),
+                array('old' => 'yandex_money_description', 'new' => 'yandex-yandex_money_description'),
+                array('old' => 'yandex_wm_description', 'new' => 'yandex-yandex_wm_description'),
+                array('old' => 'yandex_phyz_card_description', 'new' => 'yandex_phyz-yandex_phyz_card_description'),
+                array('old' => 'yandex_phyz_money_description', 'new' => 'yandex_phyz-yandex_phyz_money_description'),
+            );
+            foreach($options as $option) {
+
+                $old_value = get_option("leyka_{$option['old']}");
+                $new_value = get_option("leyka_{$option['new']}");
+
+                if($old_value && $old_value != $new_value) {
+                    update_option("leyka_{$option['new']}", $old_value);
+                }
+
+                delete_option("leyka_{$option['old']}");
+            }
         }
 
         /** Set a flag to flush permalinks (needs to be done a bit later, than this activation itself): */
@@ -665,10 +716,15 @@ class Leyka {
 
         $donation_id = $this->log_submission();
 
-        /** @todo We may want to replace whole $_POST with some specially created array */
-        do_action('leyka_payment_form_submission-'.$pm[0], $pm[0], implode('-', array_slice($pm, 1)), $donation_id, $_POST);
+        do_action(
+            'leyka_payment_form_submission-'.$pm[0],
+            $pm[0], implode('-', array_slice($pm, 1)), $donation_id, $_POST
+        );
 
-        $this->_payment_vars = apply_filters('leyka_submission_form_data-'.$pm[0], $this->_payment_vars, $pm[1], $donation_id);
+        $this->_payment_vars = apply_filters(
+            'leyka_submission_form_data-'.$pm[0],
+            $this->_payment_vars, $pm[1], $donation_id
+        );
 
         $this->_payment_url = apply_filters('leyka_submission_redirect_url-'.$pm[0], $this->_payment_url, $pm[1]);
 
@@ -690,10 +746,9 @@ class Leyka {
             'purpose_text' => $purpose_text,
         )));
 
-        if(is_wp_error($donation_id))
-            /** @todo Modify this method so it can take any WP_Error as a param, then call it here: */
+        if(is_wp_error($donation_id)) {
             return false;
-        else {
+        } else {
 
             do_action('leyka_log_donation-'.$pm_data['gateway_id'], $donation_id);
             return $donation_id;
@@ -708,8 +763,10 @@ class Leyka {
      * @param $donation WP_Post
      */
     public function finalize_log_submission($donation_id, WP_Post $donation) {
-        if($donation->post_type != Leyka_Donation_Management::$post_type)
+
+        if($donation->post_type != Leyka_Donation_Management::$post_type){
             return;
+        }
 
         do_action('leyka_logging_new_donation', $donation_id, $donation);
     }
@@ -721,11 +778,6 @@ class Leyka {
      * @return array Template files.
      **/
     public function get_templates($is_service = false) {
-
-//        if(empty($this->templates)) {
-
-
-        //if($this->templates === false || empty($this->templates)) { // If global hits an error, it returns false
 
         if( !$this->templates ) {
             $this->templates = array();
@@ -747,10 +799,8 @@ class Leyka {
         if( !$this->templates ) {
             $this->templates = array();
         }
-//            }
 
         $this->templates = array_map(array($this, 'get_template_data'), $this->templates);
-//        }
 
         return (array)$this->templates;
     }

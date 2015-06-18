@@ -57,7 +57,7 @@ function leyka_get_pages_list() {
 function leyka_get_gateways_pm_list() {
 
     $options = array();
-    foreach(leyka_get_pm_list() as $pm) {
+    foreach(leyka_get_pm_list(null, false, false) as $pm) {
         $gateway_title = leyka_get_gateway_by_id($pm->gateway_id)->title;
         $options[$pm->full_id] = $pm->label_backend
             .($gateway_title == $pm->label_backend ? '' : ' ('.$gateway_title.')');
@@ -203,6 +203,7 @@ function leyka_get_form_templates_list() {
 }
 
 function leyka_get_active_currencies() {
+
     return array(
         'rur' => array(
             'label' => leyka_options()->opt('currency_rur_label'),
@@ -567,4 +568,35 @@ function leyka_min_payment_settings_complete() {
 
 function leyka_campaign_published() {
     return count(get_posts(array('post_type' => Leyka_Campaign_Management::$post_type, 'posts_per_page' => 1))) > 0;
+}
+
+/** @return boolean True if at least one Leyka form is currently on the screen, false otherwise */
+function leyka_form_is_screening() {
+
+    return
+        is_singular(Leyka_Campaign_Management::$post_type) ||
+        (is_front_page() && stristr(get_page_template_slug(), 'home-campaign_one') !== false);
+}
+
+/** ITV info-widget **/
+function leyka_itv_info_widget(){
+	//only in Russian as for now
+    $locale = get_locale();
+    
+    if($locale != 'ru_RU')
+        return;
+    
+    
+    $src = LEYKA_PLUGIN_BASE_URL.'img/logo-itv.png';
+    $domain = parse_url(home_url()); 
+    $itv_url = "https://itv.te-st.ru/?leyka=".$domain['host'];
+?>
+	<div id="itv-card">
+        <div class="itv-logo"><a href="<?php echo esc_url($itv_url);?>" target="_blank"><img src="<?php echo esc_url($src);?>"></a></div>
+        
+        <p>Вам нужна помощь в настройке пожертвований или подключении к платежным системам? Опубликуйте задачу на платформе <a href="<?php echo esc_url($itv_url);?>" target="_blank">it-волонтер</a></p>
+                
+        <p><a href="<?php echo esc_url($itv_url);?>" target="_blank" class="button">Опубликовать задачу</a></p>
+    </div>
+<?php
 }
